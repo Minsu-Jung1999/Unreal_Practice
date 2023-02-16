@@ -51,6 +51,23 @@ public:
 	bool bDead;
 #pragma endregion
 
+#pragma region Health and Mana
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Health and Mana")
+		float Health;
+	UPROPERTY(EditAnywhere, Category = "Health and Mana")
+		float Health_Treshold;
+	UPROPERTY(EditAnywhere, Category = "Health and Mana")
+		float Healt_Adding;
+	UPROPERTY(EditAnywhere, Category = "Health and Mana")
+		TSubclassOf<UUserWidget> Player_Power_Widget_Class;
+	UUserWidget* Player_Power_Widget;
+
+	void RestartGame();
+
+#pragma endregion 
+
+
 
 
 

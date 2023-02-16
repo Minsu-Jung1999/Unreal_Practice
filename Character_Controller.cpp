@@ -7,6 +7,11 @@
 #include "Camera/CameraComponent.h"
 #include "GameFramework/CharacterMovementComponent.h"
 #include "Components/CapsuleComponent.h"
+#include "Blueprint/UserWidget.h"
+#include "Components/SkeletalMeshComponent.h"
+#include "GameFramework/Actor.h"
+#include "Kismet/GameplayStatics.h"
+
 
 // Sets default values
 ACharacter_Controller::ACharacter_Controller()
@@ -41,9 +46,9 @@ ACharacter_Controller::ACharacter_Controller()
 	CameraComp->SetupAttachment(SpringArmComp, USpringArmComponent::SocketName);
 	CameraComp->bUsePawnControlRotation = false;
 
-
-
 	bDead = false;
+	Health = 100.f;
+
 }
 
 // Called when the game starts or when spawned
@@ -53,13 +58,33 @@ void ACharacter_Controller::BeginPlay()
 	
 	GetCapsuleComponent()->OnComponentBeginOverlap.AddDynamic(this, &ACharacter_Controller::OnBeginOverlap);
 	
-	
+	if (Player_Power_Widget_Class != nullptr)
+	{
+		Player_Power_Widget = CreateWidget(GetWorld(), Player_Power_Widget_Class);
+		Player_Power_Widget->AddToViewport();
+	}
 }
 
 // Called every frame
 void ACharacter_Controller::Tick(float DeltaTime)
 {
 	Super::Tick(DeltaTime);
+
+	Health -= DeltaTime * Health_Treshold;
+
+	if (Health <= 0)
+	{
+		if (!bDead)
+		{
+			bDead = true;
+
+			GetMesh()->SetSimulatePhysics(true);
+
+			FTimerHandle UnusedHandle;
+			GetWorldTimerManager().SetTimer(
+				UnusedHandle, this, &ACharacter_Controller::RestartGame, 3.0f, false);
+		}
+	}
 
 }
 
@@ -81,30 +106,38 @@ void ACharacter_Controller::SetupPlayerInputComponent(UInputComponent* PlayerInp
 
 void ACharacter_Controller::MoveForward(float Axis)
 {
-	if (Controller != nullptr && Axis != 0.0f)
+	if (!bDead)
 	{
-		// Find out which way is forward
-		const FRotator Rotation = Controller->GetControlRotation();
-		const FRotator YawRotation(0, Rotation.Yaw, 0);
+		if (Controller != nullptr && Axis != 0.0f)
+		{
+			// Find out which way is forward
+			const FRotator Rotation = Controller->GetControlRotation();
+			const FRotator YawRotation(0, Rotation.Yaw, 0);
 
-		// Get forward vector
-		const FVector Direction = FRotationMatrix(YawRotation).GetUnitAxis(EAxis::X);
-		AddMovementInput(Direction, Axis);
+			// Get forward vector
+			const FVector Direction = FRotationMatrix(YawRotation).GetUnitAxis(EAxis::X);
+			AddMovementInput(Direction, Axis);
+		}
+
 	}
 	
 }
 
 void ACharacter_Controller::MoveRight(float Axis)
 {
-	if (Controller != nullptr && Axis != 0.0f)
+	if (!bDead)
 	{
-		// Find out which way is forward
-		const FRotator Rotation = Controller->GetControlRotation();
-		const FRotator YawRotation(0, Rotation.Yaw, 0);
+		if (Controller != nullptr && Axis != 0.0f)
+		{
+			// Find out which way is forward
+			const FRotator Rotation = Controller->GetControlRotation();
+			const FRotator YawRotation(0, Rotation.Yaw, 0);
 
-		// Get forward vector
-		const FVector Direction = FRotationMatrix(YawRotation).GetUnitAxis(EAxis::Y);
-		AddMovementInput(Direction, Axis);
+			// Get forward vector
+			const FVector Direction = FRotationMatrix(YawRotation).GetUnitAxis(EAxis::Y);
+			AddMovementInput(Direction, Axis);
+		}
+
 	}
 }
 void ACharacter_Controller::OnBeginOverlap(UPrimitiveComponent* HitComp, 
@@ -113,7 +146,15 @@ void ACharacter_Controller::OnBeginOverlap(UPrimitiveComponent* HitComp,
 {
 	if (OtherActor->ActorHasTag("Enemy"))
 	{
-		UE_LOG(LogTemp, Warning, TEXT("Enemy Contected"));
+		Health += Healt_Adding;
+
+		if (Health > 100.0f)
+			Health = 100.0f;
+
 		OtherActor->Destroy();
 	}
+}
+void ACharacter_Controller::RestartGame()
+{
+	UGameplayStatics::OpenLevel(this, FName(*GetWorld()->GetName()), false);
 }
